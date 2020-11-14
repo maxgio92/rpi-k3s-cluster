@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -euo pipefail
 
 source $PWD/scripts/init.sh
 source $PWD/settings
