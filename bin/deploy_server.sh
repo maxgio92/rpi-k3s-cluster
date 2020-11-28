@@ -3,7 +3,7 @@
 set -euo pipefail
 
 source $PWD/bin/init.sh
-source $PWD/settings
+source $PWD/config/cluster/settings
 
 k3sup="$(command -v k3sup)"
 
