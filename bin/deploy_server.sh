@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source $PWD/scripts/init.sh
+source $PWD/bin/init.sh
 source $PWD/settings
 
 k3sup="$(command -v k3sup)"
