@@ -1,0 +1,14 @@
+---
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: hello
+  namespace: maxgio-prod
+spec:
+  rules:
+    - host: www.maxgio.me
+      http:
+        paths:
+          - backend:
+              serviceName: hello
+              servicePort: 80
