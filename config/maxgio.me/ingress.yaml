@@ -2,7 +2,7 @@
 kind: Ingress
 apiVersion: extensions/v1beta1
 metadata:
-  name: hello
+  name: ghost
   namespace: maxgio-prod
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
@@ -17,5 +17,5 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: hello
+              serviceName: ghost
               servicePort: 80

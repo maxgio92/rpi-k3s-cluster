@@ -1,22 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello
+  name: ghost
   namespace: maxgio-prod
   labels:
-    app: hello
+    app: ghost
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: hello
+      app: ghost
   template:
     metadata:
       labels:
-        app: hello
+        app: ghost
     spec:
       containers:
-        - name: nginx
-          image: nginx:1.14.2
+        - name: ghost
+          image: ghost:latest
           ports:
-            - containerPort: 80
+            - containerPort: 2368
+          volumeMounts:
+            - mountPath: /var/lib/ghost/content
+              name: ghost-content
+      volumes:
+        - name: ghost-content
+          persistentVolumeClaim:
+            claimName: ghost-content
