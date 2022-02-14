@@ -1,0 +1,168 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: monitoring
+  name: influxdb
+  labels:
+    app: influxdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+        app.kubernetes.io/app: influxdb
+        app.kubernetes.io/name: influxdb
+        app.kubernetes.io/project: isp-checker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+        - name: influxdb
+          image: influxdb:1.8.3
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: isp-checker-secrets-rw
+          ports:
+            - containerPort: 8086
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - mountPath: /var/lib/influxdb
+              name: var-lib-influxdb
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "0.2"
+            limits:
+              memory: "300Mi"
+              cpu: "0.5"
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: var-lib-influxdb
+          persistentVolumeClaim:
+            claimName: influxdb-pvc
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: monitoring
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  selector:
+    matchLabels:
+      app: grafana
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: grafana
+        app.kubernetes.io/app: influxdb
+        app.kubernetes.io/name: influxdb
+        app.kubernetes.io/project: isp-checker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:7.2.1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: isp-checker-secrets-ro
+          volumeMounts:
+            # Grafana persistent volume
+            - name: grafana-volume
+              mountPath: /var/lib/grafana
+            # Grafana DS provisioner
+            - name: influxdb-datasource-provisioner
+              mountPath: /etc/grafana/provisioning/datasources/
+            # Grafana Dashboards provisioner
+            - name: grafana-dashboard-provisioner
+              mountPath: /etc/grafana/provisioning/dashboards/
+            # Network Dashboard
+            - name: network-dashboard
+              mountPath: /var/lib/grafana/dashboards/network-dashboard.json
+              subPath: network-dashboard.json
+            # Raspberry Dashboard
+            - name: raspberry-dashboard
+              mountPath: /var/lib/grafana/dashboards/raspberry-dashboard.json
+              subPath: raspberry-dashboard.json
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: /var/lib/grafana/dashboards/network-dashboard.json
+            - name: GF_INSTALL_PLUGINS
+              value: https://grafana.com/api/plugins/gowee-traceroutemap-panel/versions/0.2.3/download;gowee-traceroutemap-panel
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "0.25"
+            limits:
+              memory: "500Mi"
+              cpu: "0.4"
+      volumes:
+        # Grafana configuration PVC
+        - name: grafana-volume
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+        # InfluxDB DS provisioner
+        - name: influxdb-datasource-provisioner
+          secret:
+            secretName: influxdb-datasource-provisioner
+        # Grafana dashboard provisioner
+        - name: grafana-dashboard-provisioner
+          configMap:
+            name: grafana-dashboard-provisioner
+        # Raspberry dashboard
+        - name: raspberry-dashboard
+          configMap:
+            name: raspberry-dashboard
+        # Network dashboard
+        - name: network-dashboard
+          configMap:
+            name: network-dashboard
